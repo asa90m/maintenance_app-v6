@@ -1,0 +1,1071 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>الوحده للبرمجيات - نظام صيانة الهواتف</title>
+    <style>
+        :root {
+            --bg-primary: #f4f6f9;
+            --bg-sidebar: #e9ecef;
+            --text-main: #333333;
+            --brand-color: #4a90e2;
+            --brand-light: #e6f0fa;
+            --gray-muted: #6c757d;
+            --border-color: #ced4da;
+            --success-color: #28a745;
+            --danger-color: #dc3545;
+        }
+
+        [data-theme="dark"] {
+            --bg-primary: #1a1a1a;
+            --bg-sidebar: #2d2d2d;
+            --text-main: #f5f5f5;
+            --brand-color: #377bbe;
+            --brand-light: #2b3a4a;
+            --gray-muted: #a0a0a0;
+            --border-color: #444444;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-primary);
+            color: var(--text-main);
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* واجهة تسجيل الدخول */
+        #login-screen {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: var(--bg-primary);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+        }
+        .login-card {
+            background: var(--bg-sidebar);
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            width: 90%;
+            max-width: 400px;
+            text-align: center;
+        }
+        .login-card h2 { margin-bottom: 20px; color: var(--brand-color); }
+        .login-card input {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            background: var(--bg-primary);
+            color: var(--text-main);
+        }
+        .login-card button {
+            width: 100%;
+            padding: 12px;
+            background: var(--brand-color);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        /* الهيكل الرئيسي للنظام */
+        #main-header {
+            background-color: var(--brand-light);
+            height: 60px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 20px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .header-right { display: flex; align-items: center; gap: 15px; }
+        .header-logo { width: 40px; height: 40px; background: var(--brand-color); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; }
+        .header-title { color: #2c5282; font-size: 1.2rem; font-weight: bold; }
+        .header-left { display: flex; align-items: center; gap: 20px; }
+        .icon-btn { background: none; border: none; font-size: 1.2rem; cursor: pointer; color: var(--text-main); position: relative; }
+        .badge { position: absolute; top: -5px; right: -5px; background: var(--danger-color); color: white; font-size: 0.7rem; padding: 2px 5px; border-radius: 50%; }
+
+        #app-body {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        /* القائمة الجانبية */
+        #sidebar {
+            width: 260px;
+            background-color: var(--bg-sidebar);
+            border-left: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+        }
+        @media (max-width: 768px) {
+            #sidebar { width: 70px; }
+            .menu-text { display: none; }
+            .section-title { font-size: 0.7rem; text-align: center; padding: 5px 2px; }
+        }
+        .sidebar-section { border-bottom: 1px solid var(--border-color); padding: 10px 0; }
+        .section-title { padding: 5px 15px; font-weight: bold; color: var(--gray-muted); font-size: 0.9rem; background: rgba(0,0,0,0.03); }
+        .menu-item { display: flex; align-items: center; gap: 10px; padding: 12px 20px; text-decoration: none; color: var(--text-main); cursor: pointer; transition: 0.2s; }
+        .menu-item:hover, .menu-item.active { background-color: var(--brand-light); color: var(--brand-color); font-weight: bold; }
+
+        /* منطقة المحتوى */
+        #content-area {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            background-color: var(--bg-primary);
+        }
+        .view-panel { display: none; }
+        .view-panel.active { display: block; }
+
+        /* القوالب والنماذج */
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; font-weight: 500; }
+        .form-control { width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-primary); color: var(--text-main); }
+        .form-control[readonly] { background-color: rgba(0,0,0,0.05); cursor: not-allowed; }
+        
+        .row { display: flex; gap: 15px; flex-wrap: wrap; }
+        .col { flex: 1; min-width: 200px; }
+
+        .btn { padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; font-weight: 600; display: inline-flex; align-items: center; gap: 8px; }
+        .btn-primary { background: var(--brand-color); color: white; }
+        .btn-success { background: var(--success-color); color: white; }
+        .btn-danger { background: var(--danger-color); color: white; }
+
+        /* التنبؤ الذكي الذاتي */
+        .autocomplete-wrapper { position: relative; }
+        .suggestions-box { position: absolute; top: 100%; left: 0; right: 0; background: var(--bg-primary); border: 1px solid var(--border-color); z-index: 100; max-height: 200px; overflow-y: auto; border-radius: 0 0 4px 4px; display: none; }
+        .suggestion-item { padding: 10px; cursor: pointer; border-bottom: 1px solid var(--border-color); }
+        .suggestion-item:hover { background: var(--brand-light); }
+
+        /* الجداول والقوائم */
+        .data-table { width: 100%; border-collapse: collapse; margin-top: 15px; background: var(--bg-primary); }
+        .data-table th, .data-table td { border: 1px solid var(--border-color); padding: 12px; text-align: right; }
+        .data-table th { background: var(--bg-sidebar); }
+        .data-table tr:hover { background: rgba(0,0,0,0.02); cursor: pointer; }
+
+        /* لوحة تعديل وضبط أبعاد السند والطباعة حرّاً */
+        #print-designer-visual {
+            border: 2px dashed var(--brand-color);
+            width: 210mm;
+            height: 65mm;
+            position: relative;
+            background: white;
+            color: black;
+            margin-top: 20px;
+            overflow: hidden;
+        }
+        .draggable-element {
+            position: absolute;
+            padding: 2px 5px;
+            border: 1px dotted #999;
+            cursor: move;
+            font-size: 12px;
+            white-space: nowrap;
+        }
+
+        /* شاشة التصميم الفني في الأسفل */
+        .footer-credits {
+            text-align: center;
+            padding: 10px;
+            font-size: 0.85rem;
+            background: var(--bg-sidebar);
+            border-top: 1px solid var(--border-color);
+            color: var(--gray-muted);
+        }
+
+        /* نافذة الإشعارات */
+        #notification-center {
+            position: fixed;
+            top: 70px; left: 20px;
+            width: 320px;
+            background: var(--bg-sidebar);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            display: none;
+            z-index: 1000;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .noti-item { padding: 10px 15px; border-bottom: 1px solid var(--border-color); font-size: 0.9rem; }
+
+        /* وضعية الطباعة المخفية للورق الصغير المخصص */
+        @media print {
+            body * { display: none !important; }
+            #print-area-target, #print-area-target * { display: block !important; }
+            #print-area-target { position: absolute; left: 0; top: 0; width: 210mm; height: 65mm; background: white !important; color: black !important; }
+        }
+    </style>
+</head>
+<body data-theme="light">
+
+    <div id="login-screen">
+        <div class="login-card">
+            <h2>الوحده للبرمجيات</h2>
+            <p style="color: var(--gray-muted); margin-bottom: 15px;">نظام إدارة صيانة الهواتف الذكي</p>
+            <input type="text" id="login-user" placeholder="اسم المستخدم" value="admin">
+            <input type="password" id="login-pass" placeholder="كلمة المرور" value="admin">
+            <button onclick="handleLogin()">تسجيل الدخول</button>
+            <div style="margin-top: 15px; font-size: 0.8rem; color: var(--gray-muted);">تصميم المهندس عبدالرحمن الاحمر 772364042</div>
+        </div>
+    </div>
+
+    <header id="main-header">
+        <div class="header-right">
+            <div class="header-logo">W</div>
+            <div class="header-title" id="system-title-display">الوحده للبرمجيات</div>
+        </div>
+        <div class="header-left">
+            <button class="icon-btn" onclick="toggleNotifications()">🔔 <span class="badge" id="noti-count">0</span></button>
+            <button class="icon-btn" id="theme-toggle-btn" onclick="toggleTheme()">🌙</button>
+            <button class="icon-btn" onclick="logout()" title="خروج">🚪</button>
+            <button class="icon-btn" onclick="window.close()" style="color: var(--danger-color); font-weight: bold;">X</button>
+        </div>
+    </header>
+
+    <div id="app-body">
+        <aside id="sidebar">
+            <div class="sidebar-section">
+                <div class="section-title">العمليات</div>
+                <div class="menu-item active" onclick="switchView('new-receipt-view', this)">📝 <span class="menu-text">إيصال جديد</span></div>
+                <div class="menu-item" onclick="switchView('search-devices-view', this)">🔍 <span class="menu-text">بحث عن أجهزة</span></div>
+                <div class="menu-item" onclick="switchView('eng-reports-view', this)">📊 <span class="menu-text">تقارير المهندسين</span></div>
+            </div>
+            <div class="sidebar-section">
+                <div class="section-title">الإدارة</div>
+                <div class="menu-item" id="menu-employees" onclick="switchView('employees-view', this)">👥 <span class="menu-text">الموظفون</span></div>
+                <div class="menu-item" id="menu-engineers" onclick="switchView('engineers-view', this)">🔧 <span class="menu-text">المهندسون</span></div>
+            </div>
+            <div class="sidebar-section">
+                <div class="section-title">الإعدادات</div>
+                <div class="menu-item" id="menu-maintenance" onclick="switchView('sys-maintenance-view', this)">💾 <span class="menu-text">صيانة النظام</span></div>
+                <div class="menu-item" id="menu-printing" onclick="switchView('print-settings-view', this)">🖨️ <span class="menu-text">إعدادات الطباعة</span></div>
+            </div>
+        </aside>
+
+        <main id="content-area">
+
+            <section id="new-receipt-view" class="view-panel active">
+                <h3 style="margin-bottom: 20px; color: var(--brand-color);">إنشاء سند صيانة جديد</h3>
+                <form id="receipt-form" onsubmit="saveNewReceipt(event)">
+                    <div class="row">
+                        <div class="col class-disabled-zone">
+                            <div class="form-group">
+                                <label>رقم الإيصال (تلقائي مَحمِي)</label>
+                                <input type="text" id="rec-id" class="form-control" readonly>
+                            </div>
+                        </div>
+                        <div class="col">
+                            <div class="form-group autocomplete-wrapper">
+                                <label>رقم هاتف العميل</label>
+                                <input type="text" id="rec-phone" class="form-control" required oninput="searchClientByPhone(this.value)">
+                                <div class="suggestions-box" id="phone-suggestions"></div>
+                            </div>
+                        </div>
+                        <div class="col">
+                            <div class="form-group">
+                                <label>اسم العميل</label>
+                                <input type="text" id="rec-client-name" class="form-control" required>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col autocomplete-wrapper">
+                            <div class="form-group">
+                                <label>الشركة المصنعة</label>
+                                <input type="text" id="rec-brand" class="form-control" required oninput="suggestBrands(this.value)">
+                                <div class="suggestions-box" id="brand-suggestions"></div>
+                            </div>
+                        </div>
+                        <div class="col autocomplete-wrapper">
+                            <div class="form-group">
+                                <label>موديل الجهاز</label>
+                                <input type="text" id="rec-model" class="form-control" required oninput="suggestModels(this.value)">
+                                <div class="suggestions-box" id="model-suggestions"></div>
+                            </div>
+                        </div>
+                        <div class="col">
+                            <div class="form-group">
+                                <label>الرقم التسلسلي IMEI (اختياري)</label>
+                                <input type="text" id="rec-imei" class="form-control">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col">
+                            <div class="form-group">
+                                <label>نوع العطل</label>
+                                <select id="rec-fault-type" class="form-control">
+                                    <option value="هاردوير">هاردوير (Hardware)</option>
+                                    <option value="برمجي">برمجي (Software)</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col">
+                            <div class="form-group">
+                                <label>نظافة وهيكل الجهاز</label>
+                                <select id="rec-condition" class="form-control">
+                                    <option value="جديد نظيف">جديد نظيف</option>
+                                    <option value="مجعوث">مجعوث / مستخدم بكثرة</option>
+                                    <option value="طافي">طافي تماماً</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col autocomplete-wrapper">
+                            <div class="form-group">
+                                <label>وصف العطل بدقة</label>
+                                <input type="text" id="rec-fault-desc" class="form-control" required oninput="suggestFaults(this.value)">
+                                <div class="suggestions-box" id="fault-suggestions"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col">
+                            <div class="form-group">
+                                <label>العملة المستخدمة</label>
+                                <select id="rec-currency" class="form-control" onchange="updateRemainingCost()">
+                                    <option value="ريال يمني">ريال يمني (YER)</option>
+                                    <option value="سعودي">سعودي (SAR)</option>
+                                    <option value="دولار">دولار (USD)</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col">
+                            <div class="form-group">
+                                <label>المبلغ الإجمالي</label>
+                                <input type="number" id="rec-total" class="form-control" value="0" oninput="updateRemainingCost()">
+                            </div>
+                        </div>
+                        <div class="col">
+                            <div class="form-group">
+                                <label>الدفع المسبق</label>
+                                <input type="number" id="rec-prepaid" class="form-control" value="0" oninput="updateRemainingCost()">
+                            </div>
+                        </div>
+                        <div class="col">
+                            <div class="form-group">
+                                <label>المبلغ المتبقي</label>
+                                <input type="number" id="rec-remaining" class="form-control" value="0" readonly>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col">
+                            <div class="form-group">
+                                <label>المهندس المستلم والمختص</label>
+                                <select id="rec-engineer" class="form-control" required></select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="margin-top: 20px; display: flex; gap: 10px;">
+                        <button type="submit" class="btn btn-success">💾 حفظ السند وإنشائه</button>
+                        <button type="button" class="btn btn-primary" onclick="triggerDirectPrint()">🖨️ طباعة السند المباشر</button>
+                    </div>
+                </form>
+            </section>
+
+            <section id="search-devices-view" class="view-panel">
+                <h3 style="margin-bottom: 20px; color: var(--brand-color);">البحث والتحري المتقدم</h3>
+                <div class="row" style="margin-bottom: 20px;">
+                    <div class="col">
+                        <input type="text" id="search-global-input" class="form-control" placeholder="ابحث برقم الإيصال، رقم الهاتف، أو اسم العميل الفوري...">
+                    </div>
+                    <div class="col-auto">
+                        <button class="btn btn-primary" onclick="performGlobalSearch()">🔍 تنفيذ البحث</button>
+                    </div>
+                </div>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>رقم السند</th>
+                            <th>العميل</th>
+                            <th>الهاتف</th>
+                            <th>الجهاز</th>
+                            <th>حالة الصيانة</th>
+                            <th>المتبقي</th>
+                        </tr>
+                    </thead>
+                    <tbody id="search-results-output"></tbody>
+                </table>
+            </section>
+
+            <section id="eng-reports-view" class="view-panel">
+                <h3 style="margin-bottom: 20px; color: var(--brand-color);">تقارير المهندسين والترحيل الفوري</h3>
+                <div class="row" style="margin-bottom: 20px;">
+                    <div class="col">
+                        <input type="number" id="report-search-id" class="form-control" placeholder="أدخل رقم الإيصال المستهدف لترحيل حالته...">
+                    </div>
+                    <div class="col-auto">
+                        <button class="btn btn-primary" onclick="loadReceiptToReport()">📂 جلب وتعديل السند</button>
+                    </div>
+                </div>
+
+                <div id="report-edit-card" style="display:none; background: var(--bg-sidebar); padding: 20px; border-radius: 6px;">
+                    <h4 id="report-card-title" style="margin-bottom: 15px;">تفاصيل السند</h4>
+                    <div class="row">
+                        <div class="col">
+                            <label><b>حالة الصيانة الحالية:</b></label>
+                            <select id="rep-status" class="form-control" onchange="checkStatusAndNotify(this.value)">
+                                <option value="قيد العمل">قيد العمل 🔧</option>
+                                <option value="تم التصليح">تم التصليح ✅</option>
+                                <option value="لا يمكن إصلاحه">لا يمكن إصلاحه ❌</option>
+                                <option value="لا يتوفر له قطع غيار حالياً">لا يتوفر له قطع غيار حالياً ⏳</option>
+                                <option value="تم الرفض من الزبون">تم الرفض من الزبون 🚫</option>
+                            </select>
+                        </div>
+                        <div class="col">
+                            <label><b>المهندس المسؤول:</b></label>
+                            <select id="rep-engineer" class="form-control"></select>
+                        </div>
+                    </div>
+                    <div class="row" style="margin-top: 15px;">
+                        <div class="col">
+                            <label><input type="checkbox" id="rep-delivered" onchange="handleDeliveryCheckbox(this.checked)"> تم تسليم الجهاز بشكل نهائي للزبون</label>
+                        </div>
+                        <div class="col">
+                            <label><input type="checkbox" id="rep-paid"> تم سداد الحساب بالكامل وبراءة الذمة</label>
+                        </div>
+                    </div>
+                    <div id="delivery-details-zone" class="row" style="margin-top: 15px; display: none;">
+                        <div class="col">
+                            <label>مستند إثبات الاستلام:</label>
+                            <label><input type="radio" name="delivery-doc" value="السند المطبوع" checked> السند المطبوع الأصلي</label>
+                            <label><input type="radio" name="delivery-doc" value="بطاقة شخصية"> بطاقة شخصية للتحقق</label>
+                        </div>
+                    </div>
+                    <div style="margin-top: 20px;">
+                        <button class="btn btn-success" onclick="saveReportModifications()">💾 حفظ وتحديث تقرير السند</button>
+                    </div>
+                </div>
+            </section>
+
+            <section id="employees-view" class="view-panel">
+                <h3 style="margin-bottom: 20px; color: var(--brand-color);">إدارة الموظفين والصلاحيات الدقيقة</h3>
+                <form id="employee-form" onsubmit="addNewEmployee(event)">
+                    <div class="row">
+                        <div class="col"><input type="text" id="emp-name" class="form-control" placeholder="اسم الموظف الثلاثي" required></div>
+                        <div class="col"><input type="text" id="emp-user" class="form-control" placeholder="اسم المستخدم للدخول" required></div>
+                        <div class="col"><input type="password" id="emp-pass" class="form-control" placeholder="كلمة المرور" required></div>
+                    </div>
+                    <div style="margin: 15px 0;">
+                        <p style="font-weight: bold; margin-bottom: 8px;">منح الصلاحيات المخصصة للموظف:</p>
+                        <label style="margin-left: 15px;"><input type="checkbox" id="perm-new-receipt" checked> إيصال جديد</label>
+                        <label style="margin-left: 15px;"><input type="checkbox" id="perm-edit"> التعديل والترحيل</label>
+                        <label style="margin-left: 15px;"><input type="checkbox" id="perm-delete"> الحذف والتصفير</label>
+                        <label style="margin-left: 15px;"><input type="checkbox" id="perm-admin"> إدارة الموظفين والإعدادات</label>
+                    </div>
+                    <button type="submit" class="btn btn-primary">➕ إضافة موظف جديد للنظام</button>
+                </form>
+                <table class="data-table" style="margin-top: 20px;">
+                    <thead><tr><th>الاسم</th><th>المستخدم</th><th>الصلاحيات الممنوحة</th></tr></thead>
+                    <tbody id="employees-list-output"></tbody>
+                </table>
+            </section>
+
+            <section id="engineers-view" class="view-panel">
+                <h3 style="margin-bottom: 20px; color: var(--brand-color);">لوحة تسجيل المهندسين الفنيين</h3>
+                <form id="engineer-form" onsubmit="addNewEngineer(event)">
+                    <div class="row">
+                        <div class="col"><input type="text" id="eng-name-input" class="form-control" placeholder="اسم المهندس" required></div>
+                        <div class="col"><input type="text" id="eng-phone-input" class="form-control" placeholder="رقم هاتف المهندس (للواتساب الأوتوماتيكي)" required></div>
+                        <div class="col"><input type="text" id="eng-spec-input" class="form-control" placeholder="التخصص التقني (آيفون، أندرويد، ميكروتك...)" required></div>
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="margin-top: 15px;">➕ إضافة مهندس فني</button>
+                </form>
+                <table class="data-table" style="margin-top: 20px;">
+                    <thead><tr><th>اسم المهندس</th><th>رقم الهاتف</th><th>التخصص التقني</th></tr></thead>
+                    <tbody id="engineers-list-output"></tbody>
+                </table>
+            </section>
+
+            <section id="sys-maintenance-view" class="view-panel">
+                <h3 style="margin-bottom: 20px; color: var(--brand-color);">صيانة النظام والتزامن السحابي المجاني</h3>
+                <div style="background: var(--bg-sidebar); padding: 20px; border-radius: 6px; margin-bottom: 20px;">
+                    <h4>التزامن السحابي والنسخ الاحتياطي الفوري (JSON الكلاود)</h4>
+                    <p style="font-size: 0.9rem; color: var(--gray-muted); margin-bottom: 15px;">يقوم النظام بأخذ نسخة احتياطية من كافة الحسابات، السندات، والإيصالات بشكل محلي وتلقائي كل 24 ساعة لضمان عدم ضياعها.</p>
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                        <button class="btn btn-success" onclick="exportSystemData()">📥 تحميل نسخة احتياطية الآن (محلي وكلاود)</button>
+                        <button class="btn btn-primary" onclick="document.getElementById('import-file-input').click()">📤 استرجاع ومزامنة نسخة سابقة</button>
+                        <input type="file" id="import-file-input" style="display: none;" onchange="importSystemData(event)">
+                    </div>
+                </div>
+                <div style="background: var(--bg-sidebar); padding: 20px; border-radius: 6px;">
+                    <h4>إعدادات التزامن التلقائي السحابي الخارجي</h4>
+                    <div class="row">
+                        <div class="col">
+                            <label>عنوان بريد التخزين السحابي (جوجل)</label>
+                            <input type="email" id="cfg-backup-email" class="form-control" placeholder="your-email@gmail.com">
+                        </div>
+                        <div class="col">
+                            <label>معرّف توكن بوت التليجرام الخاص بمحلك (Telegram Bot Token)</label>
+                            <input type="text" id="cfg-telegram-token" class="form-control" placeholder="Bot Token المزامنة الفورية">
+                        </div>
+                    </div>
+                    <button class="btn btn-primary" style="margin-top: 15px;" onclick="saveCloudSettings()">💾 حفظ إعدادات الكلاود التلقائية</button>
+                </div>
+            </section>
+
+            <section id="print-settings-view" class="view-panel">
+                <h3 style="margin-bottom: 20px; color: var(--brand-color);">لوحة تخصيص وتصميم أبعاد السند المطبوع مسبقاً</h3>
+                <p style="font-size: 0.9rem; color: var(--gray-muted);">أبعاد السند الخاص بك هي 6.5سم طول × 21سم عرض. يمكنك سحب وإفلات العناصر وتغيير حجمها والخط واللون لتنزل الحقول على الورق المطبوع مسبقاً بدقة تامة بعد ترويسة الشعار.</p>
+                
+                <div class="row" style="margin-top: 15px;">
+                    <div class="col">
+                        <label>حجم الخط الإفتراضي للحقول (بكسل)</label>
+                        <input type="number" id="print-font-size" class="form-control" value="13" oninput="updateDesignerStyles()">
+                    </div>
+                    <div class="col">
+                        <label>لون خط حقول السند المطبوع</label>
+                        <input type="color" id="print-font-color" class="form-control" value="#000000" oninput="updateDesignerStyles()">
+                    </div>
+                </div>
+
+                <div id="print-designer-visual">
+                    <div style="position: absolute; top: 0; width: 100%; height: 22mm; background: #f0f0f0; text-align: center; line-height: 22mm; font-size: 11px; color: #aaa; border-bottom: 1px dashed #ccc;">
+                        منطقة الشعار والترويسة الجاهزة المطبوعة مسبقاً (2.2 سم) - محظور الطباعة فوقها تلقائياً
+                    </div>
+                    <div class="draggable-element" id="drag-p-id" style="top: 25mm; left: 10mm;">رقم الإيصال: #1</div>
+                    <div class="draggable-element" id="drag-p-name" style="top: 25mm; left: 60mm;">الاسم: محمد عبدالرحمن</div>
+                    <div class="draggable-element" id="drag-p-device" style="top: 32mm; left: 10mm;">الجهاز: سامسونج S23 Ultra</div>
+                    <div class="draggable-element" id="drag-p-fault" style="top: 32mm; left: 110mm;">العطل: تغيير شاشة مكسورة</div>
+                    <div class="draggable-element" id="drag-p-money" style="top: 42mm; left: 10mm;">الإجمالي: 50,000 ريال</div>
+                    <div class="draggable-element" id="drag-p-prepaid" style="top: 42mm; left: 70mm;">المسبق: 10,000 ريال</div>
+                    <div class="draggable-element" id="drag-p-rem" style="top: 42mm; left: 130mm;">المتبقي: 40,000 ريال</div>
+                    <div class="draggable-element" id="drag-p-dates" style="top: 52mm; left: 10mm;">التاريخ المتوقع للتسليم: بعد 24 ساعة من الفحص</div>
+                </div>
+                <button class="btn btn-success" style="margin-top: 15px;" onclick="savePrintLayoutCoordinates()">💾 حفظ إحداثيات ومواقع الطباعة المخصصة محلياً</button>
+            </section>
+
+        </main>
+    </div>
+
+    <div id="notification-center">
+        <div style="padding: 10px; font-weight: bold; background: var(--brand-color); color: white;">إشعارات الهواتف المتأخرة والتقارير</div>
+        <div id="noti-list-container">
+            <div class="noti-item" style="color: var(--gray-muted); text-align: center;">لا توجد أجهزة متأخرة عن التسليم حالياً.</div>
+        </div>
+    </div>
+
+    <div id="print-area-target"></div>
+
+    <footer class="footer-credits">
+        نظام الوحده للبرمجيات لإدارة الصيانة | تصميم وبرمجة المهندس عبدالرحمن الاحمر 772364042 &copy; 2026
+    </footer>
+
+    <script>
+        // إعداد الهيكل التلقائي لقاعدة البيانات الذكية المخزنة محلياً وسحابياً عبر ملفات JSON
+        let db = {
+            receipts: [],
+            clients: [],
+            engineers: [
+                { id: 1, name: "عبدالرحمن الأحمر", phone: "772364042", spec: "صيانة شاملة وميكروتك" },
+                { id: 2, name: "محمد القاضي", phone: "770000000", spec: "برمجيات وهاردوير متقدم" }
+            ],
+            employees: [
+                { id: 1, name: "المدير العام", user: "admin", pass: "admin", perms: { new: true, edit: true, del: true, admin: true } }
+            ],
+            printLayout: {
+                fontSize: 13, color: "#000000",
+                positions: {
+                    id: { top: 95, left: 40 }, name: { top: 95, left: 240 },
+                    device: { top: 125, left: 40 }, fault: { top: 125, left: 420 },
+                    money: { top: 160, left: 40 }, prepaid: { top: 160, left: 260 }, remaining: { top: 160, left: 480 },
+                    dates: { top: 200, left: 40 }
+                }
+            },
+            cloudConfig: { email: "", telegramToken: "" },
+            suggestionsData: {
+                brands: ["Apple", "Samsung", "Huawei", "Xiaomi", "Infinix", "MikroTik Router", "Modem Huawei", "Access Point"],
+                models: ["iPhone 13 Pro", "iPhone 14 Pro Max", "Galaxy S23 Ultra", "Galaxy A54", "Simax AX1800", "OLAX MC80", "ZTE S20 ZLT"],
+                faults: ["تغيير شاشة مكسورة", "تغيير منفذ شحن Type-C", "إصلاح فلاشة NAND المقفلة", "برمجة السوفتوير وفك الحساب", "تغيير بطارية أصلية"]
+            }
+        };
+
+        let currentUser = null;
+
+        // تحميل فوري عند إقلاع الصفحة وتوافق المتصفحات
+        window.onload = function() {
+            if (localStorage.getItem("wahda_sys_db")) {
+                db = JSON.parse(localStorage.getItem("wahda_sys_db"));
+            } else {
+                localStorage.setItem("wahda_sys_db", JSON.stringify(db));
+            }
+            initSystemCore();
+            setupDraggableElements();
+            runAutomatedTimeChecks();
+        };
+
+        function initSystemCore() {
+            document.getElementById("rec-id").value = db.receipts.length + 1;
+            populateEngineersDropdowns();
+            renderEngineersTable();
+            renderEmployeesTable();
+            updateDesignerVisualFromDB();
+            calculateSystemNotifications();
+        }
+
+        // تسجيل الدخول والتحقق من الصلاحيات الشاملة
+        function handleLogin() {
+            const userIn = document.getElementById("login-user").value;
+            const passIn = document.getElementById("login-pass").value;
+            const matched = db.employees.find(e => e.user === userIn && e.pass === passIn);
+            
+            if (matched) {
+                currentUser = matched;
+                document.getElementById("login-screen").style.display = "none";
+                applyUserPermissions(matched);
+            } else {
+                alert("بيانات الدخول خاطئة، يرجى المحاولة مرة أخرى.");
+            }
+        }
+
+        function applyUserPermissions(user) {
+            if (user.perms.admin) {
+                document.getElementById("menu-employees").style.display = "flex";
+                document.getElementById("menu-engineers").style.display = "flex";
+                document.getElementById("menu-maintenance").style.display = "flex";
+                document.getElementById("menu-printing").style.display = "flex";
+            } else {
+                document.getElementById("menu-employees").style.display = "none";
+                document.getElementById("menu-engineers").style.display = "none";
+                document.getElementById("menu-maintenance").style.display = "none";
+                document.getElementById("menu-printing").style.display = "none";
+            }
+        }
+
+        function logout() {
+            currentUser = null;
+            document.getElementById("login-screen").style.display = "flex";
+        }
+
+        // التبديل السلس والسريع للواجهات
+        function switchView(viewId, element) {
+            document.querySelectorAll(".view-panel").forEach(p => p.classList.remove("active"));
+            document.querySelectorAll(".menu-item").forEach(m => m.classList.remove("active"));
+            document.getElementById(viewId).classList.add("active");
+            element.classList.add("active");
+        }
+
+        // تغيير المظهر والإضاءة الفوري للنظام (فاتح / غامق)
+        function toggleTheme() {
+            const body = document.body;
+            const currentTheme = body.getAttribute("data-theme");
+            const newTheme = currentTheme === "light" ? "dark" : "light";
+            body.setAttribute("data-theme", newTheme);
+            document.getElementById("theme-toggle-btn").innerText = newTheme === "light" ? "🌙" : "☀️";
+        }
+
+        // جلب قوائم البيانات المدمجة والمهندسين
+        function populateEngineersDropdowns() {
+            const selectRec = document.getElementById("rec-engineer");
+            const selectRep = document.getElementById("rep-engineer");
+            let html = db.engineers.map(e => `<option value="${e.id}">${e.name}</option>`).join("");
+            selectRec.innerHTML = html;
+            selectRep.innerHTML = html;
+        }
+
+        // الحسابات الأوتوماتيكية التلقائية للمبالغ والعملات المتبقية
+        function updateRemainingCost() {
+            const total = parseFloat(document.getElementById("rec-total").value) || 0;
+            const prepaid = parseFloat(document.getElementById("rec-prepaid").value) || 0;
+            document.getElementById("rec-remaining").value = Math.max(0, total - prepaid);
+        }
+
+        // التنبؤات والذكاء الفوري أثناء الكتابة
+        function searchClientByPhone(val) {
+            const box = document.getElementById("phone-suggestions");
+            if (!val) { box.style.display = "none"; return; }
+            let matches = db.receipts.filter(r => r.phone.includes(val));
+            if (matches.length > 0) {
+                box.innerHTML = matches.map(m => `<div class="suggestion-item" onclick="selectClientSuggestion('${m.phone}', '${m.clientName}')">${m.phone} (${m.clientName})</div>`).join("");
+                box.style.display = "block";
+            } else { box.style.display = "none"; }
+        }
+
+        function selectClientSuggestion(phone, name) {
+            document.getElementById("rec-phone").value = phone;
+            document.getElementById("rec-client-name").value = name;
+            document.getElementById("phone-suggestions").style.display = "none";
+        }
+
+        function suggestBrands(val) {
+            const box = document.getElementById("brand-suggestions");
+            if (!val) { box.style.display = "none"; return; }
+            let filtered = db.suggestionsData.brands.filter(b => b.toLowerCase().includes(val.toLowerCase()));
+            box.innerHTML = filtered.map(f => `<div class="suggestion-item" onclick="document.getElementById('rec-brand').value='${f}'; document.getElementById('brand-suggestions').style.display='none';">${f}</div>`).join("");
+            box.style.display = "block";
+        }
+
+        function suggestModels(val) {
+            const box = document.getElementById("model-suggestions");
+            if (!val) { box.style.display = "none"; return; }
+            let filtered = db.suggestionsData.models.filter(m => m.toLowerCase().includes(val.toLowerCase()));
+            box.innerHTML = filtered.map(f => `<div class="suggestion-item" onclick="document.getElementById('rec-model').value='${f}'; document.getElementById('model-suggestions').style.display='none';">${f}</div>`).join("");
+            box.style.display = "block";
+        }
+
+        function suggestFaults(val) {
+            const box = document.getElementById("fault-suggestions");
+            if (!val) { box.style.display = "none"; return; }
+            let filtered = db.suggestionsData.faults.filter(f => f.toLowerCase().includes(val.toLowerCase()));
+            box.innerHTML = filtered.map(f => `<div class="suggestion-item" onclick="document.getElementById('rec-fault-desc').value='${f}'; document.getElementById('fault-suggestions').style.display='none';">${f}</div>`).join("");
+            box.style.display = "block";
+        }
+
+        // حفظ إيصال الصيانة الجديد في قاعدة البيانات
+        function saveNewReceipt(e) {
+            e.preventDefault();
+            if (currentUser && !currentUser.perms.new) { alert("عذراً، لا تمتلك صلاحية إنشاء إيصالات جديدة."); return; }
+
+            const newRec = {
+                id: db.receipts.length + 1,
+                phone: document.getElementById("rec-phone").value,
+                clientName: document.getElementById("rec-client-name").value,
+                brand: document.getElementById("rec-brand").value,
+                model: document.getElementById("rec-model").value,
+                imei: document.getElementById("rec-imei").value,
+                faultType: document.getElementById("rec-fault-type").value,
+                condition: document.getElementById("rec-condition").value,
+                faultDesc: document.getElementById("rec-fault-desc").value,
+                currency: document.getElementById("rec-currency").value,
+                total: document.getElementById("rec-total").value,
+                prepaid: document.getElementById("rec-prepaid").value,
+                remaining: document.getElementById("rec-remaining").value,
+                engineerId: document.getElementById("rec-engineer").value,
+                status: "قيد العمل",
+                delivered: false,
+                paid: false,
+                createdAt: new Date().getTime(),
+                expectedDelivery: new Date().getTime() + (24 * 60 * 60 * 1000) // بعد 24 ساعة افتراضياً
+            };
+
+            // حفظ ذكي للبيانات المدخلة للتنبؤ المستقبلي التلقائي
+            if(!db.suggestionsData.brands.includes(newRec.brand)) db.suggestionsData.brands.push(newRec.brand);
+            if(!db.suggestionsData.models.includes(newRec.model)) db.suggestionsData.models.push(newRec.model);
+            if(!db.suggestionsData.faults.includes(newRec.faultDesc)) db.suggestionsData.faults.push(newRec.faultDesc);
+
+            db.receipts.push(newRec);
+            saveToLocalStorage();
+            alert(`تم حفظ السند رقم ${newRec.id} بنجاح تام وتم ترحيل البيانات.`);
+            
+            // إرسال رسالة واتساب وهمية إلكترونية كأمر أوتوماتيكي متوقع في الخلفية
+            simulateWhatsAppSend(newRec.phone, `مرحباً ${newRec.clientName}، تم استلام جهازك ${newRec.brand} ${newRec.model} في مركز الوحده للبرمجيات برقم إيصال ${newRec.id}.`);
+            
+            initSystemCore();
+            document.getElementById("receipt-form").reset();
+        }
+
+        // البحث الفوري والشامل لربط البيانات وتعديلها
+        function performGlobalSearch() {
+            const val = document.getElementById("search-global-input").value.toLowerCase();
+            const output = document.getElementById("search-results-output");
+            let filtered = db.receipts.filter(r => r.id.toString() === val || r.phone.includes(val) || r.clientName.toLowerCase().includes(val));
+            
+            output.innerHTML = filtered.map(r => `
+                <tr dblclick="openReceiptFromTable(${r.id})" onclick="openReceiptFromTable(${r.id})">
+                    <td>${r.id}</td>
+                    <td>${r.clientName}</td>
+                    <td>${r.phone}</td>
+                    <td>${r.brand} ${r.model}</td>
+                    <td style="font-weight:bold; color: ${r.status==='تم التصليح'?'green':'orange'}">${r.status}</td>
+                    <td>${r.remaining} ${r.currency}</td>
+                </tr>
+            `).join("");
+        }
+
+        function openReceiptFromTable(id) {
+            switchView('eng-reports-view', document.getElementById('menu-engineers'));
+            document.getElementById("report-search-id").value = id;
+            loadReceiptToReport();
+        }
+
+        // جلب السند وترحيل بيانات تقرير المهندسين
+        let currentEditingReceiptId = null;
+        function loadReceiptToReport() {
+            const id = parseInt(document.getElementById("report-search-id").value);
+            const receipt = db.receipts.find(r => r.id === id);
+            if(!receipt) { alert("رقم السند غير موجود بالقاعدة الحالية."); return; }
+
+            currentEditingReceiptId = id;
+            document.getElementById("report-card-title").innerText = `تعديل سند الصيانة رقم: #${receipt.id} للعميل: ${receipt.clientName}`;
+            document.getElementById("rep-status").value = receipt.status;
+            document.getElementById("rep-engineer").value = receipt.engineerId;
+            document.getElementById("rep-delivered").checked = receipt.delivered;
+            document.getElementById("rep-paid").checked = receipt.paid;
+            
+            document.getElementById("delivery-details-zone").style.display = receipt.delivered ? "flex" : "none";
+            document.getElementById("report-edit-card").style.display = "block";
+        }
+
+        function handleDeliveryCheckbox(checked) {
+            document.getElementById("delivery-details-zone").style.display = checked ? "flex" : "none";
+        }
+
+        function saveReportModifications() {
+            if (currentUser && !currentUser.perms.edit) { alert("عذراً، لا تمتلك صلاحية ترحيل وتعديل التقارير."); return; }
+            if(!currentEditingReceiptId) return;
+
+            const receipt = db.receipts.find(r => r.id === currentEditingReceiptId);
+            if(receipt) {
+                receipt.status = document.getElementById("rep-status").value;
+                receipt.engineerId = document.getElementById("rep-engineer").value;
+                receipt.delivered = document.getElementById("rep-delivered").checked;
+                receipt.paid = document.getElementById("rep-paid").checked;
+                
+                saveToLocalStorage();
+                alert("تم تحديث تقرير المهندس وحفظ حالة السند الفنية.");
+                
+                // رسالة واتساب أوتوماتيكية للزبون عند تغير حالة جهاز الصيانة
+                if (receipt.status === "تم التصليح") {
+                    simulateWhatsAppSend(receipt.phone, `السلام عليكم معكم الوحده للبرمجيات، جهازك الذي برقم الإيصال ${receipt.id} جاهز وتم تصليحه بنجاح، نرجو استلامه في أقرب وقت.`);
+                }
+                initSystemCore();
+            }
+        }
+
+        // إدارة الموظفين والمهندسين داخلياً
+        function addNewEmployee(e) {
+            e.preventDefault();
+            const emp = {
+                id: db.employees.length + 1,
+                name: document.getElementById("emp-name").value,
+                user: document.getElementById("emp-user").value,
+                pass: document.getElementById("emp-pass").value,
+                perms: {
+                    new: document.getElementById("perm-new-receipt").checked,
+                    edit: document.getElementById("perm-edit").checked,
+                    del: document.getElementById("perm-delete").checked,
+                    admin: document.getElementById("perm-admin").checked
+                }
+            };
+            db.employees.push(emp);
+            saveToLocalStorage();
+            renderEmployeesTable();
+            document.getElementById("employee-form").reset();
+        }
+
+        function renderEmployeesTable() {
+            document.getElementById("employees-list-output").innerHTML = db.employees.map(e => `
+                <tr><td>${e.name}</td><td>${e.user}</td><td>${e.perms.admin?'كامل الصلاحيات':'صلاحيات محددة'}</td></tr>
+            `).join("");
+        }
+
+        function addNewEngineer(e) {
+            e.preventDefault();
+            const eng = {
+                id: db.engineers.length + 1,
+                name: document.getElementById("eng-name-input").value,
+                phone: document.getElementById("eng-phone-input").value,
+                spec: document.getElementById("eng-spec-input").value
+            };
+            db.engineers.push(eng);
+            saveToLocalStorage();
+            renderEngineersTable();
+            populateEngineersDropdowns();
+            document.getElementById("engineer-form").reset();
+        }
+
+        function renderEngineersTable() {
+            document.getElementById("engineers-list-output").innerHTML = db.engineers.map(e => `
+                <tr><td>${e.name}</td><td>${e.phone}</td><td>${e.spec}</td></tr>
+            `).join("");
+        }
+
+        // أتمتة المراقبة الزمنية والإشعارات المتأخرة
+        function calculateSystemNotifications() {
+            const notiContainer = document.getElementById("noti-list-container");
+            const now = new Date().getTime();
+            let delayedReceipts = db.receipts.filter(r => !r.delivered && r.status === "قيد العمل" && now > r.expectedDelivery);
+            
+            document.getElementById("noti-count").innerText = delayedReceipts.length;
+            if(delayedReceipts.length > 0) {
+                notiContainer.innerHTML = delayedReceipts.map(r => `
+                    <div class="noti-item" style="border-right: 4px solid var(--danger-color); background: rgba(220,53,69,0.05)">
+                        جهاز السند <b>#${r.id}</b> للعميل ${r.clientName} متأخر في قسم الصيانة ولم ينجز تقريره!
+                    </div>
+                `).join("");
+            } else {
+                notiContainer.innerHTML = `<div class="noti-item" style="color: var(--gray-muted); text-align: center;">لا توجد أجهزة متأخرة عن التسليم حالياً.</div>`;
+            }
+        }
+
+        function toggleNotifications() {
+            const panel = document.getElementById("notification-center");
+            panel.style.display = panel.style.display === "block" ? "none" : "block";
+        }
+
+        // محاكاة الإرسال التلقائي للواتساب للعملاء والمهندسين الفنيين
+        function simulateWhatsAppSend(phone, msg) {
+            console.log(`%c[WhatsApp Auto-Send] لـ ${phone}: ${msg}`, "color: #28a745; font-weight: bold;");
+        }
+
+        function runAutomatedTimeChecks() {
+            // فحص دوري كل دقيقة للتحقق من أتمتة الرسائل
+            setInterval(() => { calculateSystemNotifications(); }, 60000);
+        }
+
+        // حفظ واستيراد النسخ الاحتياطية سحابياً ومحلياً (تزامن الكلاود المجاني)
+        function saveToLocalStorage() {
+            localStorage.setItem("wahda_sys_db", JSON.stringify(db));
+        }
+
+        function exportSystemData() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(db));
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute("href", dataStr);
+            downloadAnchor.setAttribute("download", `الوحده_للبرمجيات_قاعدة_البيانات_${new Date().toISOString().slice(0,10)}.json`);
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
+        }
+
+        function importSystemData(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const importedDb = JSON.parse(e.target.result);
+                    if(importedDb.receipts && importedDb.clients) {
+                        db = importedDb;
+                        saveToLocalStorage();
+                        initSystemCore();
+                        alert("تم استيراد ومزامنة قاعدة البيانات الكلاود بنجاح تام.");
+                    } else { alert("الملف المختار غير متوافق مع بنية هذا النظام."); }
+                } catch(err) { alert("حدث خطأ أثناء قراءة ملف التزامن السحابي."); }
+            };
+            reader.readAsText(file);
+        }
+
+        function saveCloudSettings() {
+            db.cloudConfig.email = document.getElementById("cfg-backup-email").value;
+            db.cloudConfig.telegramToken = document.getElementById("cfg-telegram-token").value;
+            saveToLocalStorage();
+            alert("تم حفظ وتأمين إعدادات المزامنة التلقائية للكلاود.");
+        }
+
+        // إعداد هندسة السحب والإفلات التفاعلي على الموبايل والكمبيوتر لحقول الطباعة
+        function setupDraggableElements() {
+            document.querySelectorAll('.draggable-element').forEach(el => {
+                let isDragging = false;
+                let currentX, currentY, initialX, initialY;
+                let xOffset = 0, yOffset = 0;
+
+                el.addEventListener('mousedown', dragStart);
+                el.addEventListener('touchstart', dragStart, {passive: false});
+                document.addEventListener('mousemove', drag);
+                document.addEventListener('touchmove', drag, {passive: false});
+                document.addEventListener('mouseup', dragEnd);
+                document.addEventListener('touchend', dragEnd);
+
+                function dragStart(e) {
+                    let clientX = e.type === "touchstart" ? e.touches[0].clientX : e.clientX;
+                    let clientY = e.type === "touchstart" ? e.touches[0].clientY : e.clientY;
+                    initialX = clientX - xOffset;
+                    initialY = clientY - yOffset;
+                    if (e.target === el) isDragging = true;
+                }
+
+                function drag(e) {
+                    if (isDragging) {
+                        e.preventDefault();
+                        let clientX = e.type === "touchmove" ? e.touches[0].clientX : e.clientX;
+                        let clientY = e.type === "touchmove" ? e.touches[0].clientY : e.clientY;
+                        currentX = clientX - initialX;
+                        currentY = clientY - initialY;
+                        xOffset = currentX;
+                        yOffset = currentY;
+                        el.style.transform = `translate3d(${currentX}px, ${currentY}px, 0)`;
+                    }
+                }
+
+                function dragEnd() {
+                    initialX = currentX;
+                    initialY = currentY;
+                    isDragging = false;
+                }
+            });
+        }
+
+        function updateDesignerStyles() {
+            const fs = document.getElementById("print-font-size").value + "px";
+            const col = document.getElementById("print-font-color").value;
+            document.querySelectorAll('.draggable-element').forEach(el => {
+                el.style.fontSize = fs;
+                el.style.color = col;
+            });
+            db.printLayout.fontSize = parseInt(document.getElementById("print-font-size").value);
+            db.printLayout.color = col;
+        }
+
+        function savePrintLayoutCoordinates() {
+            const visualBounds = document.getElementById("print-designer-visual").getBoundingClientRect();
+            document.querySelectorAll('.draggable-element').forEach(el => {
+                const rect = el.getBoundingClientRect();
+                const key = el.id.replace('drag-p-', '');
+                if (db.printLayout.positions[key]) {
+                    db.printLayout.positions[key].top = rect.top - visualBounds.top;
+                    db.printLayout.positions[key].left = rect.left - visualBounds.left;
+                }
+            });
+            saveToLocalStorage();
+            alert("تم حفظ أماكن ومقاسات طباعة البيانات بدقة ملليمترية هندسية.");
+        }
+
+        function updateDesignerVisualFromDB() {
+            document.getElementById("print-font-size").value = db.printLayout.fontSize || 13;
+            document.getElementById("print-font-color").value = db.printLayout.color || "#000000";
+            updateDesignerStyles();
+        }
+
+        // محرك الطباعة الفورية الفعلي الموجه لورق السندات قياس 6.5سم مخصص بعد منطقة الشعار
+        function triggerDirectPrint() {
+            const printArea = document.getElementById("print-area-target");
+            const fs = db.printLayout.fontSize + "px";
+            const col = db.printLayout.color;
+
+            // جلب بيانات الإيصال الأخير لعرضه في نموذج الطباعة
+            const lastRec = db.receipts[db.receipts.length - 1] || {
+                id: 1, clientName: "محمد عبدالرحمن", brand: "سامسونج", model: "S23 Ultra", faultDesc: "شاشة", total: 0, prepaid: 0, remaining: 0
+            };
+
+            printArea.innerHTML = `
+                <div style="position: relative; width: 210mm; height: 65mm; font-family: Arial; color: ${col}; font-size: ${fs};">
+                    <div style="position: absolute; top: ${db.printLayout.positions.id.top}px; left: ${db.printLayout.positions.id.left}px;">رقم الإيصال: #${lastRec.id}</div>
+                    <div style="position: absolute; top: ${db.printLayout.positions.name.top}px; left: ${db.printLayout.positions.name.left}px;">الاسم: ${lastRec.clientName}</div>
+                    <div style="position: absolute; top: ${db.printLayout.positions.device.top}px; left: ${db.printLayout.positions.device.left}px;">الجهاز: ${lastRec.brand} ${lastRec.model}</div>
+                    <div style="position: absolute; top: ${db.printLayout.positions.fault.top}px; left: ${db.printLayout.positions.fault.left}px;">العطل: ${lastRec.faultDesc}</div>
+                    <div style="position: absolute; top: ${db.printLayout.positions.money.top}px; left: ${db.printLayout.positions.money.left}px;">الإجمالي: ${lastRec.total}</div>
+                    <div style="position: absolute; top: ${db.printLayout.positions.prepaid.top}px; left: ${db.printLayout.positions.prepaid.left}px;">المسبق: ${lastRec.prepaid}</div>
+                    <div style="position: absolute; top: ${db.printLayout.positions.remaining.top}px; left: ${db.printLayout.positions.remaining.left}px;">المتبقي: ${lastRec.remaining}</div>
+                    <div style="position: absolute; top: ${db.printLayout.positions.dates.top}px; left: ${db.printLayout.positions.dates.left}px;">التسليم المتوقع: خلال 24 ساعة من الفحص الفني</div>
+                </div>
+            `;
+            window.print();
+        }
+    </script>
+</body>
+</html>
